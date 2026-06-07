@@ -13,8 +13,8 @@ import java.util.concurrent.TimeUnit
 /**
  * Thin wrapper over OkHttp + Retrofit for talking to an Immich server.
  *
- * The methods are stateless — the class only exists so a test can pass a fake
- * via [LocalImmichClient].
+ * The methods are stateless — the class only exists so Koin can hand out a
+ * shared instance and tests can swap a fake via the same module.
  */
 class ImmichClient {
 
@@ -80,9 +80,6 @@ class ImmichClient {
 
         fun thumbnailUrl(baseUrl: String, assetId: String): String =
             "${normalizeBaseUrl(baseUrl)}api/assets/$assetId/thumbnail?size=thumbnail"
-
-        fun originalUrl(baseUrl: String, assetId: String): String =
-            "${normalizeBaseUrl(baseUrl)}api/assets/$assetId/original"
 
         fun previewUrl(baseUrl: String, assetId: String): String =
             "${normalizeBaseUrl(baseUrl)}api/assets/$assetId/thumbnail?size=preview"

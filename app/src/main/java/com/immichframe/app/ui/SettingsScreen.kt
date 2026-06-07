@@ -4,7 +4,6 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -394,7 +393,7 @@ private fun CityPickerDialog(
     var results by remember { mutableStateOf<List<CityResult>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
 
-    val weatherApi = com.immichframe.app.LocalWeatherApi.current
+    val weatherApi: WeatherApi = org.koin.compose.koinInject()
     LaunchedEffect(query, weatherApi) {
         if (query.length < 2) {
             results = emptyList()
@@ -592,7 +591,7 @@ private fun TimePickerDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 TimePicker(state = state)
             }
         },

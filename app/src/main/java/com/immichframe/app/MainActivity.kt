@@ -102,9 +102,8 @@ private fun wakeScreen(activity: Activity) {
 @Composable
 private fun AppRoot() {
     val context = LocalContext.current
-    val container = remember { AppContainer(context.applicationContext) }
-    val settingsRepo = container.settingsRepository
-    val immichRepo = container.immichRepository
+    val settingsRepo: SettingsRepository = org.koin.compose.koinInject()
+    val immichRepo: ImmichRepository = org.koin.compose.koinInject()
     val settings by settingsRepo.settings.collectAsState(initial = null)
     val nav = rememberNavController()
 
@@ -114,10 +113,12 @@ private fun AppRoot() {
         return
     }
 
-    val scheduledAsleep by produceState(initialValue = SleepSchedule.isAsleepNow(current), current) {
+    @Suppress("ProduceStateDoesNotAssignValue")
+    val scheduledAsleep by produceState(SleepSchedule.isAsleepNow(current), current) {
+        value = SleepSchedule.isAsleepNow(current)
         while (true) {
-            value = SleepSchedule.isAsleepNow(current)
             delay(30_000)
+            value = SleepSchedule.isAsleepNow(current)
         }
     }
 
@@ -160,10 +161,6 @@ private fun AppRoot() {
         else -> "slideshow/${current.selectedAlbumId}"
     }
 
-    androidx.compose.runtime.CompositionLocalProvider(
-        LocalImmichClient provides container.immichClient,
-        LocalWeatherApi provides container.weatherApi,
-    ) {
     NavHost(navController = nav, startDestination = startDestination) {
         composable("settings") {
             SettingsScreen(
@@ -210,6 +207,5 @@ private fun AppRoot() {
                 },
             )
         }
-    }
     }
 }

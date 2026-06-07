@@ -8,16 +8,14 @@ import android.renderscript.Allocation
 import android.renderscript.Element
 import android.renderscript.RenderScript
 import android.renderscript.ScriptIntrinsicBlur
-import androidx.annotation.RequiresApi
 import coil.size.Size
 import coil.transform.Transformation
 
 /**
  * Copied (and trimmed) from Coil 2.0's removed BlurTransformation.
- * RenderScript-based, works on API 18+ (Frame is API 23).
+ * RenderScript-based; safe on every Android version our minSdk (23) supports.
  */
 @Suppress("DEPRECATION")
-@RequiresApi(18)
 class BlurTransformation(
     private val context: Context,
     private val radius: Float = 25f,

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -61,7 +60,7 @@ fun AlbumsScreen(
     onOpenSettings: () -> Unit,
 ) {
     val context = LocalContext.current
-    val immichClient = com.immichframe.app.LocalImmichClient.current
+    val immichClient: ImmichClient = org.koin.compose.koinInject()
     val scope = rememberCoroutineScope()
     val albums by immichRepository.observeAlbums().collectAsState(initial = emptyList())
     var refreshing by remember { mutableStateOf(false) }

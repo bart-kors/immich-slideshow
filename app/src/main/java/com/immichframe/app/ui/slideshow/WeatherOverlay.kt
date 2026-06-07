@@ -14,8 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.immichframe.app.LocalWeatherApi
 import com.immichframe.app.SlideshowDefaults
+import com.immichframe.app.WeatherApi
 import com.immichframe.app.WeatherSnapshot
 import kotlinx.coroutines.delay
 
@@ -26,12 +26,14 @@ internal fun WeatherOverlay(
     longitude: Double,
     modifier: Modifier = Modifier,
 ) {
-    val weatherApi = LocalWeatherApi.current
-    val weather by produceState<WeatherSnapshot?>(initialValue = null, latitude, longitude, weatherApi) {
+    val weatherApi: WeatherApi = org.koin.compose.koinInject()
+    @Suppress("ProduceStateDoesNotAssignValue")
+    val weather by produceState<WeatherSnapshot?>(null, latitude, longitude, weatherApi) {
+        value = weatherApi.fetch(latitude, longitude)
         while (true) {
+            delay(SlideshowDefaults.WEATHER_REFRESH_MS)
             val fresh = weatherApi.fetch(latitude, longitude)
             if (fresh != null) value = fresh
-            delay(SlideshowDefaults.WEATHER_REFRESH_MS)
         }
     }
     val w = weather ?: return
