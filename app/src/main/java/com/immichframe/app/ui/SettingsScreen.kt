@@ -394,7 +394,8 @@ private fun CityPickerDialog(
     var results by remember { mutableStateOf<List<CityResult>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
 
-    LaunchedEffect(query) {
+    val weatherApi = com.immichframe.app.LocalWeatherApi.current
+    LaunchedEffect(query, weatherApi) {
         if (query.length < 2) {
             results = emptyList()
             loading = false
@@ -402,7 +403,7 @@ private fun CityPickerDialog(
         }
         loading = true
         delay(300) // debounce
-        results = WeatherApi.searchCities(query)
+        results = weatherApi.searchCities(query)
         loading = false
     }
 

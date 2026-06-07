@@ -61,6 +61,7 @@ fun AlbumsScreen(
     onOpenSettings: () -> Unit,
 ) {
     val context = LocalContext.current
+    val immichClient = com.immichframe.app.LocalImmichClient.current
     val scope = rememberCoroutineScope()
     val albums by immichRepository.observeAlbums().collectAsState(initial = emptyList())
     var refreshing by remember { mutableStateOf(false) }
@@ -68,7 +69,7 @@ fun AlbumsScreen(
 
     val imageLoader = remember(apiKey) {
         ImageLoader.Builder(context)
-            .okHttpClient(ImmichClient.okHttp(apiKey))
+            .okHttpClient(immichClient.okHttp(apiKey))
             .crossfade(true)
             .build()
     }

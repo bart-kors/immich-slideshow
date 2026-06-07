@@ -102,8 +102,9 @@ private fun wakeScreen(activity: Activity) {
 @Composable
 private fun AppRoot() {
     val context = LocalContext.current
-    val settingsRepo = remember { SettingsRepository(context.applicationContext) }
-    val immichRepo = remember { ImmichRepository(context.applicationContext) }
+    val container = remember { AppContainer(context.applicationContext) }
+    val settingsRepo = container.settingsRepository
+    val immichRepo = container.immichRepository
     val settings by settingsRepo.settings.collectAsState(initial = null)
     val nav = rememberNavController()
 
@@ -159,6 +160,10 @@ private fun AppRoot() {
         else -> "slideshow/${current.selectedAlbumId}"
     }
 
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalImmichClient provides container.immichClient,
+        LocalWeatherApi provides container.weatherApi,
+    ) {
     NavHost(navController = nav, startDestination = startDestination) {
         composable("settings") {
             SettingsScreen(
@@ -196,10 +201,8 @@ private fun AppRoot() {
                 albumId = albumId,
                 serverUrl = current.serverUrl,
                 apiKey = current.apiKey,
-                blurredBackground = current.blurredBackground,
-                cropLandscape = current.cropLandscape,
-                weatherLatitude = current.weatherLatitude,
-                weatherLongitude = current.weatherLongitude,
+                immichRepository = immichRepo,
+                uiSettings = current.toSlideshowUiSettings(),
                 onExit = {
                     nav.navigate("albums") {
                         popUpTo("slideshow/$albumId") { inclusive = true }
@@ -207,5 +210,6 @@ private fun AppRoot() {
                 },
             )
         }
+    }
     }
 }

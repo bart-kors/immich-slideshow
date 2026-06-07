@@ -8,14 +8,17 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 
-class ImmichRepository(context: Context) {
+class ImmichRepository(
+    context: Context,
+    private val client: ImmichClient = ImmichClient(),
+) {
 
     private val dao = ImmichDatabase.get(context).immichDao()
 
     fun observeAlbums(): Flow<List<AlbumEntity>> = dao.observeAlbums()
 
     suspend fun refreshAlbums(serverUrl: String, apiKey: String) {
-        val remote = ImmichClient.api(serverUrl, apiKey).getAlbums()
+        val remote = client.api(serverUrl, apiKey).getAlbums()
         val existing = dao.getAlbumsOnce().associateBy { it.id }
         val now = System.currentTimeMillis()
 
@@ -28,7 +31,7 @@ class ImmichRepository(context: Context) {
                         newThumbId == null -> null
                         prev != null && prev.thumbnailAssetId == newThumbId && prev.thumbnail != null ->
                             prev.thumbnail
-                        else -> ImmichClient.fetchThumbnailBytes(serverUrl, apiKey, newThumbId)
+                        else -> client.fetchThumbnailBytes(serverUrl, apiKey, newThumbId)
                     }
                     AlbumEntity(
                         id = dto.id,
@@ -51,4 +54,26 @@ class ImmichRepository(context: Context) {
     suspend fun clearAll() {
         dao.deleteAllAlbums()
     }
+
+    /**
+     * Fetches a single album's assets from the server, filters out OTHER types,
+     * returns them in a stable shuffled order.
+     */
+    suspend fun loadAlbumAssets(
+        serverUrl: String,
+        apiKey: String,
+        albumId: String,
+    ): AlbumAssets {
+        val album = client.api(serverUrl, apiKey).getAlbum(albumId)
+        val supported = album.assets.filter { it.assetType() != AssetType.OTHER }
+        return AlbumAssets(
+            albumName = album.albumName,
+            assets = supported.shuffled(),
+        )
+    }
 }
+
+data class AlbumAssets(
+    val albumName: String,
+    val assets: List<AssetDto>,
+)

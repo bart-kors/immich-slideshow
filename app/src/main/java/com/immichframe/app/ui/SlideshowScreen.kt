@@ -100,40 +100,45 @@ import com.immichframe.app.AssetDto
 import com.immichframe.app.AssetType
 import com.immichframe.app.BlurTransformation
 import com.immichframe.app.ImmichClient
+import com.immichframe.app.ImmichRepository
+import com.immichframe.app.SlideshowDefaults
+import com.immichframe.app.SlideshowUiSettings
 import com.immichframe.app.WeatherApi
 import com.immichframe.app.WeatherSnapshot
 import com.immichframe.app.assetType
 import kotlinx.coroutines.delay
 
-private const val SLIDE_INTERVAL_MS = 30_000L
-private const val CONTROLS_TIMEOUT_MS = 5_000L
-private const val HINT_TIMEOUT_MS = 3_000L
-private const val PAGER_VIRTUAL_COUNT = 10_000
+private val SLIDE_INTERVAL_MS = SlideshowDefaults.SLIDE_INTERVAL_MS
+private val CONTROLS_TIMEOUT_MS = SlideshowDefaults.CONTROLS_TIMEOUT_MS
+private val HINT_TIMEOUT_MS = SlideshowDefaults.HINT_TIMEOUT_MS
+private val PAGER_VIRTUAL_COUNT = SlideshowDefaults.PAGER_VIRTUAL_COUNT
 
 @Composable
 fun SlideshowScreen(
     albumId: String,
     serverUrl: String,
     apiKey: String,
-    blurredBackground: Boolean,
-    cropLandscape: Boolean,
-    weatherLatitude: Double,
-    weatherLongitude: Double,
+    immichRepository: ImmichRepository,
+    uiSettings: SlideshowUiSettings,
     onExit: () -> Unit,
 ) {
+    val blurredBackground = uiSettings.blurredBackground
+    val cropLandscape = uiSettings.cropLandscape
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var assets by remember { mutableStateOf<List<AssetDto>?>(null) }
     var albumName by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    var showControls by remember { mutableStateOf(false) }
-    var showHint by remember { mutableStateOf(false) }
-    var interactionNonce by remember { mutableStateOf(0) }
+    val controls = remember { com.immichframe.app.ui.slideshow.ControlsState() }
+    val showControls = controls.showControls
+    val showHint = controls.showHint
+    val interactionNonce = controls.interactionNonce
     var videoPaused by remember { mutableStateOf(false) }
     var videoMuted by remember { mutableStateOf(true) }
-    var imageScale by remember { mutableStateOf(1f) }
-    var imageOffsetX by remember { mutableStateOf(0f) }
-    var imageOffsetY by remember { mutableStateOf(0f) }
+    val zoom = remember { com.immichframe.app.ui.slideshow.ZoomState() }
+    val imageScale = zoom.scale
+    val imageOffsetX = zoom.offsetX
+    val imageOffsetY = zoom.offsetY
 
     val pagerStartPage = remember { PAGER_VIRTUAL_COUNT / 2 }
     val pagerState = rememberPagerState(initialPage = pagerStartPage) { PAGER_VIRTUAL_COUNT }
@@ -145,7 +150,8 @@ fun SlideshowScreen(
     val crossfadeAlpha = remember { Animatable(0f) }
     var autoAdvancing by remember { mutableStateOf(false) }
 
-    val okHttp = remember(apiKey) { ImmichClient.okHttp(apiKey) }
+    val immichClient = com.immichframe.app.LocalImmichClient.current
+    val okHttp = remember(immichClient, apiKey) { immichClient.okHttp(apiKey) }
     val imageLoader = remember(apiKey) {
         ImageLoader.Builder(context)
             .okHttpClient(okHttp)
@@ -157,10 +163,9 @@ fun SlideshowScreen(
         assets = null
         error = null
         try {
-            val album = ImmichClient.api(serverUrl, apiKey).getAlbum(albumId)
-            albumName = album.albumName
-            val supported = album.assets.filter { it.assetType() != AssetType.OTHER }
-            assets = supported.shuffled()
+            val loaded = immichRepository.loadAlbumAssets(serverUrl, apiKey, albumId)
+            albumName = loaded.albumName
+            assets = loaded.assets
             pagerState.scrollToPage(pagerStartPage)
         } catch (t: Throwable) {
             error = t.message ?: t.toString()
@@ -170,9 +175,7 @@ fun SlideshowScreen(
     LaunchedEffect(pagerState.currentPage) {
         videoPaused = false
         videoMuted = true
-        imageScale = 1f
-        imageOffsetX = 0f
-        imageOffsetY = 0f
+        zoom.reset()
     }
 
     BackHandler { onExit() }
@@ -229,23 +232,12 @@ fun SlideshowScreen(
                 imageScale = imageScale,
                 imageOffsetX = imageOffsetX,
                 imageOffsetY = imageOffsetY,
-                onImageTransform = { newScale, panX, panY ->
-                    imageScale = newScale
-                    if (newScale > 1f) {
-                        imageOffsetX += panX
-                        imageOffsetY += panY
-                    } else {
-                        imageOffsetX = 0f
-                        imageOffsetY = 0f
-                    }
-                },
+                onImageTransform = { newScale, panX, panY -> zoom.apply(newScale, panX, panY) },
                 onAdvance = advance,
                 onTap = {
                     val isVideoNow = assets?.getOrNull(currentIndex)?.assetType() == AssetType.VIDEO
                     if (isVideoNow) videoPaused = !videoPaused
-                    if (!showControls) showHint = true
-                    showControls = true
-                    interactionNonce++
+                    controls.onUserTap()
                 },
                 onSwipeUp = onExit,
                 blurredBackground = blurredBackground,
@@ -308,11 +300,11 @@ fun SlideshowScreen(
                 albumName = albumName,
                 onNext = {
                     advance()
-                    interactionNonce++
+                    controls.onUserNavigated()
                 },
                 onPrevious = {
                     goPrevious()
-                    interactionNonce++
+                    controls.onUserNavigated()
                 },
             )
         }
@@ -328,21 +320,21 @@ fun SlideshowScreen(
         if (showControls) {
             LaunchedEffect(interactionNonce) {
                 delay(CONTROLS_TIMEOUT_MS)
-                showControls = false
+                controls.hideControls()
             }
         }
 
         if (showHint) {
             LaunchedEffect(showHint) {
                 delay(HINT_TIMEOUT_MS)
-                showHint = false
+                controls.hideHint()
             }
         }
 
         DateTimeOverlay(modifier = Modifier.align(Alignment.TopEnd))
         WeatherOverlay(
-            latitude = weatherLatitude,
-            longitude = weatherLongitude,
+            latitude = uiSettings.weatherLatitude,
+            longitude = uiSettings.weatherLongitude,
             modifier = Modifier.align(Alignment.TopStart),
         )
 
@@ -817,182 +809,19 @@ private fun EmptyState(onExit: () -> Unit) {
     }
 }
 
-@Composable
-private fun DateTimeOverlay(modifier: Modifier = Modifier) {
-    val nlLocale = remember { java.util.Locale("nl", "NL") }
-    val dateFmt = remember(nlLocale) { java.text.SimpleDateFormat("d MMMM yyyy", nlLocale) }
-    val timeFmt = remember(nlLocale) { java.text.SimpleDateFormat("HH:mm", nlLocale) }
+// Overlays moved to com.immichframe.app.ui.slideshow.* — re-exported below for backward compatibility.
+@Composable private fun DateTimeOverlay(modifier: Modifier = Modifier) =
+    com.immichframe.app.ui.slideshow.DateTimeOverlay(modifier)
 
-    val now by produceState(initialValue = java.util.Date()) {
-        while (true) {
-            value = java.util.Date()
-            kotlinx.coroutines.delay(30_000)
-        }
-    }
+@Composable private fun WeatherOverlay(latitude: Double, longitude: Double, modifier: Modifier = Modifier) =
+    com.immichframe.app.ui.slideshow.WeatherOverlay(latitude, longitude, modifier)
 
-    val dateText = dateFmt.format(now).replaceFirstChar { if (it.isLowerCase()) it.uppercase(nlLocale) else it.toString() }
-    val timeText = timeFmt.format(now)
+@Composable private fun HintOverlay(modifier: Modifier = Modifier) =
+    com.immichframe.app.ui.slideshow.HintOverlay(modifier)
 
-    Column(
-        modifier = modifier
-            .padding(top = 24.dp, end = 24.dp)
-            .background(Color(0x66000000), RoundedCornerShape(12.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.End,
-    ) {
-        Text(
-            text = timeText,
-            color = Color.White,
-            style = MaterialTheme.typography.headlineMedium,
-        )
-        Text(
-            text = dateText,
-            color = Color(0xFFE6E6E6),
-            style = MaterialTheme.typography.bodyMedium,
-        )
-    }
-}
+@Composable private fun AssetMetaOverlay(asset: AssetDto, modifier: Modifier = Modifier) =
+    com.immichframe.app.ui.slideshow.AssetMetaOverlay(asset, modifier)
 
-private const val WEATHER_REFRESH_MS = 15L * 60_000L
-
-@Composable
-private fun WeatherOverlay(
-    latitude: Double,
-    longitude: Double,
-    modifier: Modifier = Modifier,
-) {
-    val weather by produceState<WeatherSnapshot?>(initialValue = null, latitude, longitude) {
-        while (true) {
-            val fresh = WeatherApi.fetch(latitude, longitude)
-            if (fresh != null) value = fresh
-            delay(WEATHER_REFRESH_MS)
-        }
-    }
-    val w = weather ?: return
-    Row(
-        modifier = modifier
-            .padding(start = 24.dp, top = 24.dp)
-            .background(Color(0x66000000), RoundedCornerShape(12.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = emojiForWmo(w.weatherCode),
-            style = MaterialTheme.typography.displaySmall,
-        )
-        Spacer(Modifier.padding(start = 12.dp))
-        Text(
-            text = "${w.tempCelsius.toInt()}°C",
-            color = Color.White,
-            style = MaterialTheme.typography.headlineMedium,
-        )
-    }
-}
-
-private fun emojiForWmo(code: Int): String = when (code) {
-    0 -> "☀️"
-    1 -> "🌤️"
-    2 -> "⛅"
-    3 -> "☁️"
-    45, 48 -> "🌫️"
-    in 51..57 -> "🌦️"
-    in 61..67 -> "🌧️"
-    in 71..77 -> "❄️"
-    in 80..82 -> "🌧️"
-    in 85..86 -> "🌨️"
-    95 -> "⛈️"
-    96, 99 -> "⛈️"
-    else -> "☁️"
-}
-
-@Composable
-private fun HintOverlay(modifier: Modifier = Modifier) {
-    Box(modifier = modifier, contentAlignment = Alignment.BottomCenter) {
-        Column(
-            modifier = Modifier
-                .padding(bottom = 24.dp)
-                .background(Color(0x66000000), RoundedCornerShape(12.dp))
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                imageVector = Icons.Filled.KeyboardArrowUp,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(40.dp),
-            )
-            Text(
-                text = "Swipe up to choose another album",
-                color = Color.White,
-                style = MaterialTheme.typography.titleMedium,
-            )
-        }
-    }
-}
-
-@Composable
-private fun AssetMetaOverlay(asset: AssetDto, modifier: Modifier = Modifier) {
-    val location = listOfNotNull(asset.exifInfo?.city, asset.exifInfo?.country)
-        .filter { it.isNotBlank() }
-        .joinToString(", ")
-    val rawDate = asset.exifInfo?.dateTimeOriginal
-        ?: asset.localDateTime
-        ?: asset.fileCreatedAt
-    val formattedDate = remember(rawDate) { formatIsoToDutch(rawDate) }
-    if (location.isBlank() && formattedDate.isBlank()) return
-
-    Column(
-        modifier = modifier
-            .padding(bottom = 24.dp)
-            .background(Color(0x66000000), RoundedCornerShape(12.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        if (location.isNotBlank()) {
-            Text(
-                text = location,
-                color = Color.White,
-                style = MaterialTheme.typography.titleMedium,
-            )
-        }
-        if (formattedDate.isNotBlank()) {
-            Text(
-                text = formattedDate,
-                color = Color(0xFFE6E6E6),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-    }
-}
-
-private val isoCandidates = arrayOf(
-    "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
-    "yyyy-MM-dd'T'HH:mm:ssXXX",
-    "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-    "yyyy-MM-dd'T'HH:mm:ss'Z'",
-    "yyyy-MM-dd'T'HH:mm:ss",
-)
-
-private fun formatIsoToDutch(raw: String?): String {
-    if (raw.isNullOrBlank()) return ""
-    val nl = java.util.Locale("nl", "NL")
-    val out = java.text.SimpleDateFormat("d MMMM yyyy", nl)
-    for (pattern in isoCandidates) {
-        runCatching {
-            val parsed = java.text.SimpleDateFormat(pattern, java.util.Locale.US).parse(raw)
-            if (parsed != null) return out.format(parsed)
-        }
-    }
-    return ""
-}
-
-@Composable
-private fun SpinnerOverlay() {
-    Box(
-        modifier = Modifier.fillMaxSize().background(Color.Black),
-        contentAlignment = Alignment.Center,
-    ) {
-        CircularProgressIndicator(color = Color.White)
-    }
-}
+@Composable private fun SpinnerOverlay() =
+    com.immichframe.app.ui.slideshow.SpinnerOverlay()
 

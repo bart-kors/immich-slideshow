@@ -1,5 +1,6 @@
 package com.immichframe.app
 
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -7,25 +8,15 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import retrofit2.Retrofit
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 
-object ImmichClient {
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-        coerceInputValues = true
-    }
-
-    fun normalizeBaseUrl(raw: String): String {
-        val trimmed = raw.trim().trimEnd('/')
-        val withScheme = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            trimmed
-        } else {
-            "http://$trimmed"
-        }
-        return "$withScheme/"
-    }
+/**
+ * Thin wrapper over OkHttp + Retrofit for talking to an Immich server.
+ *
+ * The methods are stateless — the class only exists so a test can pass a fake
+ * via [LocalImmichClient].
+ */
+class ImmichClient {
 
     fun okHttp(apiKey: String): OkHttpClient =
         OkHttpClient.Builder()
@@ -44,16 +35,11 @@ object ImmichClient {
         Retrofit.Builder()
             .baseUrl(normalizeBaseUrl(baseUrl))
             .client(okHttp(apiKey))
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(jsonForRetrofit.asConverterFactory("application/json".toMediaType()))
             .build()
 
     fun api(baseUrl: String, apiKey: String): ImmichApi =
         retrofit(baseUrl, apiKey).create(ImmichApi::class.java)
-
-    fun thumbnailUrl(baseUrl: String, assetId: String): String =
-        "${normalizeBaseUrl(baseUrl)}api/assets/$assetId/thumbnail?size=thumbnail"
-
-    private const val MAX_THUMBNAIL_BYTES = 300_000
 
     suspend fun fetchThumbnailBytes(
         baseUrl: String,
@@ -71,9 +57,37 @@ object ImmichClient {
         }.getOrNull()
     }
 
-    fun previewUrl(baseUrl: String, assetId: String): String =
-        "${normalizeBaseUrl(baseUrl)}api/assets/$assetId/thumbnail?size=preview"
+    companion object {
+        private const val MAX_THUMBNAIL_BYTES = 300_000
 
-    fun videoPlaybackUrl(baseUrl: String, assetId: String): String =
-        "${normalizeBaseUrl(baseUrl)}api/assets/$assetId/video/playback"
+        private val jsonForRetrofit = Json {
+            ignoreUnknownKeys = true
+            coerceInputValues = true
+        }
+
+        // Pure URL builders kept as companion functions so callers don't need an instance
+        // (they don't depend on per-request state).
+
+        fun normalizeBaseUrl(raw: String): String {
+            val trimmed = raw.trim().trimEnd('/')
+            val withScheme = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                trimmed
+            } else {
+                "http://$trimmed"
+            }
+            return "$withScheme/"
+        }
+
+        fun thumbnailUrl(baseUrl: String, assetId: String): String =
+            "${normalizeBaseUrl(baseUrl)}api/assets/$assetId/thumbnail?size=thumbnail"
+
+        fun originalUrl(baseUrl: String, assetId: String): String =
+            "${normalizeBaseUrl(baseUrl)}api/assets/$assetId/original"
+
+        fun previewUrl(baseUrl: String, assetId: String): String =
+            "${normalizeBaseUrl(baseUrl)}api/assets/$assetId/thumbnail?size=preview"
+
+        fun videoPlaybackUrl(baseUrl: String, assetId: String): String =
+            "${normalizeBaseUrl(baseUrl)}api/assets/$assetId/video/playback"
+    }
 }
