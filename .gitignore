@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+local.properties
+
+# Kotlin / Android
+*.iml
+.idea/
+*.hprof
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystores (don't commit your keys)
+*.jks
+*.keystore
+
+# Outputs
+*.apk
+*.aab
+
+# OS
+.DS_Store
+Thumbs.db
