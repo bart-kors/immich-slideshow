@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import androidx.core.graphics.createBitmap
 import android.renderscript.Allocation
 import android.renderscript.Element
 import android.renderscript.RenderScript
@@ -34,7 +35,7 @@ class BlurTransformation(
         val scaledHeight = (input.height / sampling).toInt().coerceAtLeast(1)
 
         val config = input.config ?: Bitmap.Config.ARGB_8888
-        val output = Bitmap.createBitmap(scaledWidth, scaledHeight, config)
+        val output = createBitmap(scaledWidth, scaledHeight, config)
 
         Canvas(output).apply {
             scale(1f / sampling, 1f / sampling)
