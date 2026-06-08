@@ -15,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.immichframe.app.R
 
 /** Bottom-center pill prompting the user to swipe up to pick another album. */
 @Composable
@@ -35,7 +37,7 @@ internal fun HintOverlay(modifier: Modifier = Modifier) {
                 modifier = Modifier.size(40.dp),
             )
             Text(
-                text = "Swipe up to choose another album",
+                text = stringResource(R.string.slideshow_swipe_up_hint),
                 color = Color.White,
                 style = MaterialTheme.typography.titleMedium,
             )

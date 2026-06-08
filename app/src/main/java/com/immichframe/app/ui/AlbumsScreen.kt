@@ -39,8 +39,11 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.immichframe.app.R
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -93,12 +96,12 @@ fun AlbumsScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Choose an album",
+                text = stringResource(R.string.albums_title),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.albums_settings))
             }
         }
 
@@ -112,18 +115,18 @@ fun AlbumsScreen(
             albums.isEmpty() && error != null -> {
                 Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Couldn't load albums", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.albums_load_failed), style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(8.dp))
                         Text(error ?: "", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFF8888))
                         Spacer(Modifier.height(16.dp))
-                        Text("Tap the gear icon to fix the connection.", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.albums_load_failed_hint), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
 
             albums.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No albums found on this server.")
+                    Text(stringResource(R.string.albums_empty))
                 }
             }
 
@@ -208,7 +211,7 @@ private fun AlbumCard(
             maxLines = 1,
         )
         Text(
-            text = "${album.assetCount} items",
+            text = pluralStringResource(R.plurals.albums_item_count, album.assetCount, album.assetCount),
             style = MaterialTheme.typography.bodySmall,
             color = Color(0xFFB5BAC5),
         )

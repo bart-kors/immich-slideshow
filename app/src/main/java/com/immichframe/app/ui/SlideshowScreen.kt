@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.immichframe.app.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -311,7 +313,7 @@ fun SlideshowScreen(
                 ) {
                     Icon(
                         imageVector = if (videoMuted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
-                        contentDescription = if (videoMuted) "Unmute" else "Mute",
+                        contentDescription = if (videoMuted) stringResource(R.string.common_unmute) else stringResource(R.string.common_mute),
                         tint = Color.White,
                         modifier = Modifier.size(32.dp),
                     )
@@ -681,7 +683,7 @@ private fun ControlsOverlay(
         ) {
             Icon(
                 imageVector = Icons.Filled.SkipPrevious,
-                contentDescription = "Previous",
+                contentDescription = stringResource(R.string.common_previous),
                 tint = Color.White,
                 modifier = Modifier.size(72.dp),
             )
@@ -709,7 +711,7 @@ private fun ControlsOverlay(
         ) {
             Icon(
                 imageVector = Icons.Filled.SkipNext,
-                contentDescription = "Next",
+                contentDescription = stringResource(R.string.common_next),
                 tint = Color.White,
                 modifier = Modifier.size(72.dp),
             )
@@ -724,12 +726,12 @@ private fun ErrorState(message: String, onExit: () -> Unit) {
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Failed to load album", color = Color.White, style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.slideshow_failed_to_load), color = Color.White, style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(8.dp))
         Text(message, color = Color(0xFFFF8888), style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(16.dp))
         IconButton(onClick = onExit) {
-            Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+            Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = Color.White)
         }
     }
 }
@@ -741,10 +743,10 @@ private fun EmptyState(onExit: () -> Unit) {
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("This album has no photos or videos.", color = Color.White)
+        Text(stringResource(R.string.slideshow_empty), color = Color.White)
         Spacer(Modifier.height(16.dp))
         IconButton(onClick = onExit) {
-            Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+            Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = Color.White)
         }
     }
 }

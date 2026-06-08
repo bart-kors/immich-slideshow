@@ -58,7 +58,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.immichframe.app.R
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -75,25 +77,31 @@ private sealed interface SettingItem {
     val summary: String
     val icon: androidx.compose.ui.graphics.vector.ImageVector
 
-    data class ServerUrl(override val summary: String) : SettingItem {
-        override val title = "Server URL"
+    data class ServerUrl(
+        override val title: String,
+        override val summary: String,
+    ) : SettingItem {
         override val icon = Icons.Filled.Language
     }
 
-    data class ApiKey(override val summary: String) : SettingItem {
-        override val title = "API key"
+    data class ApiKey(
+        override val title: String,
+        override val summary: String,
+    ) : SettingItem {
         override val icon = Icons.Filled.Key
     }
 
-    data object ClearCache : SettingItem {
-        override val title = "Clear cached albums"
-        override val summary = "Forces a fresh download of the album list and thumbnails"
+    data class ClearCache(
+        override val title: String,
+        override val summary: String,
+    ) : SettingItem {
         override val icon = Icons.Filled.Delete
     }
 
-    data object OpenSystemSettings : SettingItem {
-        override val title = "Open Android settings"
-        override val summary = "Wi-Fi, display, sound, and other system options"
+    data class OpenSystemSettings(
+        override val title: String,
+        override val summary: String,
+    ) : SettingItem {
         override val icon = Icons.Filled.PhoneAndroid
     }
 }
@@ -128,13 +136,13 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     if (canContinue) {
                         IconButton(onClick = onSaved) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
+                                contentDescription = stringResource(R.string.common_back),
                             )
                         }
                     }
@@ -142,7 +150,7 @@ fun SettingsScreen(
                 actions = {
                     if (canContinue) {
                         IconButton(onClick = onSaved) {
-                            Icon(Icons.Filled.Check, contentDescription = "Done")
+                            Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.common_done))
                         }
                     }
                 },
@@ -153,10 +161,20 @@ fun SettingsScreen(
         },
         containerColor = Color(0xFF0F1115),
     ) { padding ->
+        val notSet = stringResource(R.string.common_not_set)
         val items: List<SettingItem> = listOf(
-            SettingItem.ServerUrl(serverUrl.ifBlank { "Not set" }),
-            SettingItem.ApiKey(maskApiKey(apiKey)),
-            SettingItem.ClearCache,
+            SettingItem.ServerUrl(
+                title = stringResource(R.string.settings_server_url),
+                summary = serverUrl.ifBlank { notSet },
+            ),
+            SettingItem.ApiKey(
+                title = stringResource(R.string.settings_api_key),
+                summary = maskApiKey(apiKey, notSet),
+            ),
+            SettingItem.ClearCache(
+                title = stringResource(R.string.settings_clear_cache_title),
+                summary = stringResource(R.string.settings_clear_cache_summary),
+            ),
         )
 
         LazyColumn(
@@ -164,7 +182,7 @@ fun SettingsScreen(
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
             item {
-                SectionHeader("Connection")
+                SectionHeader(stringResource(R.string.settings_section_connection))
             }
             items(items.subList(0, 2)) { item ->
                 SettingsRow(item = item, onClick = { editing = item })
@@ -172,7 +190,7 @@ fun SettingsScreen(
             }
             item {
                 Spacer(Modifier.height(16.dp))
-                SectionHeader("Display")
+                SectionHeader(stringResource(R.string.settings_section_display))
             }
             item {
                 BlurredBackgroundRow(
@@ -189,7 +207,7 @@ fun SettingsScreen(
             }
             item {
                 Spacer(Modifier.height(16.dp))
-                SectionHeader("Weather")
+                SectionHeader(stringResource(R.string.settings_section_weather))
             }
             item {
                 WeatherLocationRow(
@@ -199,7 +217,7 @@ fun SettingsScreen(
             }
             item {
                 Spacer(Modifier.height(16.dp))
-                SectionHeader("Storage")
+                SectionHeader(stringResource(R.string.settings_section_storage))
             }
             item {
                 SettingsRow(
@@ -209,7 +227,7 @@ fun SettingsScreen(
             }
             item {
                 Spacer(Modifier.height(16.dp))
-                SectionHeader("Sleep schedule")
+                SectionHeader(stringResource(R.string.settings_section_sleep))
             }
             item {
                 SleepEnabledRow(
@@ -220,7 +238,7 @@ fun SettingsScreen(
             }
             item {
                 SleepTimeRow(
-                    title = "Sleep at",
+                    title = stringResource(R.string.settings_sleep_at),
                     summary = sleepOffTime,
                     icon = Icons.Filled.Bedtime,
                     enabled = sleepEnabled,
@@ -230,7 +248,7 @@ fun SettingsScreen(
             }
             item {
                 SleepTimeRow(
-                    title = "Wake at",
+                    title = stringResource(R.string.settings_wake_at),
                     summary = sleepOnTime,
                     icon = Icons.Filled.WbSunny,
                     enabled = sleepEnabled,
@@ -239,11 +257,14 @@ fun SettingsScreen(
             }
             item {
                 Spacer(Modifier.height(16.dp))
-                SectionHeader("Device")
+                SectionHeader(stringResource(R.string.settings_section_device))
             }
             item {
                 SettingsRow(
-                    item = SettingItem.OpenSystemSettings,
+                    item = SettingItem.OpenSystemSettings(
+                        title = stringResource(R.string.settings_open_android_title),
+                        summary = stringResource(R.string.settings_open_android_summary),
+                    ),
                     trailingIcon = Icons.Filled.OpenInNew,
                     onClick = {
                         context.startActivity(
@@ -259,9 +280,9 @@ fun SettingsScreen(
 
     when (val current = editing) {
         is SettingItem.ServerUrl -> EditDialog(
-            title = "Server URL",
+            title = stringResource(R.string.settings_server_url),
             initialValue = serverUrl,
-            placeholder = "https://photos.example.com",
+            placeholder = stringResource(R.string.settings_server_url_placeholder),
             keyboardType = KeyboardType.Uri,
             masked = false,
             onDismiss = { editing = null },
@@ -277,7 +298,7 @@ fun SettingsScreen(
             },
         )
         is SettingItem.ApiKey -> EditDialog(
-            title = "API key",
+            title = stringResource(R.string.settings_api_key),
             initialValue = apiKey,
             placeholder = "",
             keyboardType = KeyboardType.Password,
@@ -294,24 +315,24 @@ fun SettingsScreen(
                 }
             },
         )
-        SettingItem.ClearCache, SettingItem.OpenSystemSettings, null -> Unit
+        is SettingItem.ClearCache, is SettingItem.OpenSystemSettings, null -> Unit
     }
 
     if (showClearConfirm) {
         AlertDialog(
             onDismissRequest = { showClearConfirm = false },
-            title = { Text("Clear cached albums?") },
-            text = { Text("The album list and thumbnails will be downloaded again on next open.") },
+            title = { Text(stringResource(R.string.settings_clear_cache_dialog_title)) },
+            text = { Text(stringResource(R.string.settings_clear_cache_dialog_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
                         immichRepository.clearAll()
                         showClearConfirm = false
                     }
-                }) { Text("Clear") }
+                }) { Text(stringResource(R.string.common_clear)) }
             },
             dismissButton = {
-                TextButton(onClick = { showClearConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showClearConfirm = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -335,7 +356,9 @@ fun SettingsScreen(
 
     editingTime?.let { edit ->
         TimePickerDialog(
-            title = if (edit is TimeEdit.Off) "Sleep at" else "Wake at",
+            title = if (edit is TimeEdit.Off)
+                stringResource(R.string.settings_sleep_at)
+            else stringResource(R.string.settings_wake_at),
             initial = edit.value,
             onDismiss = { editingTime = null },
             onConfirm = { newValue ->
@@ -367,10 +390,10 @@ private fun WeatherLocationRow(cityName: String, onClick: () -> Unit) {
                 tint = MaterialTheme.colorScheme.primary,
             )
         },
-        headlineContent = { Text("Weather location") },
+        headlineContent = { Text(stringResource(R.string.settings_weather_location)) },
         supportingContent = {
             Text(
-                text = cityName.ifBlank { "Not set" },
+                text = cityName.ifBlank { stringResource(R.string.common_not_set) },
                 color = Color(0xFFB5BAC5),
                 maxLines = 2,
             )
@@ -406,13 +429,14 @@ private fun CityPickerDialog(
         loading = false
     }
 
+    val notSet = stringResource(R.string.common_not_set)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Weather location") },
+        title = { Text(stringResource(R.string.settings_weather_location)) },
         text = {
             Column {
                 Text(
-                    text = "Currently: ${currentDisplayName.ifBlank { "Not set" }}",
+                    text = stringResource(R.string.settings_weather_currently, currentDisplayName.ifBlank { notSet }),
                     color = Color(0xFFB5BAC5),
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -420,7 +444,7 @@ private fun CityPickerDialog(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("Start typing a city…") },
+                    placeholder = { Text(stringResource(R.string.settings_weather_search_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -428,12 +452,12 @@ private fun CityPickerDialog(
                 Box(modifier = Modifier.heightIn(min = 80.dp, max = 320.dp)) {
                     when {
                         loading -> Text(
-                            text = "Searching…",
+                            text = stringResource(R.string.settings_weather_searching),
                             color = Color(0xFFB5BAC5),
                             modifier = Modifier.padding(8.dp),
                         )
                         results.isEmpty() && query.length >= 2 -> Text(
-                            text = "No matches.",
+                            text = stringResource(R.string.settings_weather_no_matches),
                             color = Color(0xFFB5BAC5),
                             modifier = Modifier.padding(8.dp),
                         )
@@ -462,7 +486,7 @@ private fun CityPickerDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
@@ -477,10 +501,12 @@ private fun CropLandscapeRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
                 tint = MaterialTheme.colorScheme.primary,
             )
         },
-        headlineContent = { Text("Crop landscape to fit") },
+        headlineContent = { Text(stringResource(R.string.settings_crop_title)) },
         supportingContent = {
             Text(
-                text = if (enabled) "Landscape photos fill the screen, trimmed equally from top and bottom" else "Landscape photos shown at full height with bars on the sides",
+                text = if (enabled)
+                    stringResource(R.string.settings_crop_summary_on)
+                else stringResource(R.string.settings_crop_summary_off),
                 color = Color(0xFFB5BAC5),
             )
         },
@@ -504,10 +530,12 @@ private fun BlurredBackgroundRow(enabled: Boolean, onToggle: (Boolean) -> Unit) 
                 tint = MaterialTheme.colorScheme.primary,
             )
         },
-        headlineContent = { Text("Blurred background fill") },
+        headlineContent = { Text(stringResource(R.string.settings_blur_title)) },
         supportingContent = {
             Text(
-                text = if (enabled) "Photo fills the screen, edges padded with a blurred copy" else "Photo shown at original aspect with black bars on the sides",
+                text = if (enabled)
+                    stringResource(R.string.settings_blur_summary_on)
+                else stringResource(R.string.settings_blur_summary_off),
                 color = Color(0xFFB5BAC5),
             )
         },
@@ -531,10 +559,12 @@ private fun SleepEnabledRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
                 tint = MaterialTheme.colorScheme.primary,
             )
         },
-        headlineContent = { Text("Enable sleep schedule") },
+        headlineContent = { Text(stringResource(R.string.settings_sleep_enable_title)) },
         supportingContent = {
             Text(
-                text = if (enabled) "Display turns off and on every day at the times below" else "Display stays on all the time",
+                text = if (enabled)
+                    stringResource(R.string.settings_sleep_enable_summary_on)
+                else stringResource(R.string.settings_sleep_enable_summary_off),
                 color = Color(0xFFB5BAC5),
             )
         },
@@ -598,10 +628,10 @@ private fun TimePickerDialog(
         confirmButton = {
             TextButton(onClick = {
                 onConfirm(SleepSchedule.formatMinutes(state.hour * 60 + state.minute))
-            }) { Text("Save") }
+            }) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
@@ -691,13 +721,13 @@ private fun EditDialog(
             ) { Text("Save") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
 
-private fun maskApiKey(value: String): String = when {
-    value.isBlank() -> "Not set"
+private fun maskApiKey(value: String, notSetText: String): String = when {
+    value.isBlank() -> notSetText
     value.length <= 4 -> "•".repeat(value.length)
     else -> "•".repeat(value.length - 4) + value.takeLast(4)
 }

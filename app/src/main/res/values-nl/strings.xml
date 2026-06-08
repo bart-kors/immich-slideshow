@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Immich Diashow</string>
+
+    <!-- Common -->
+    <string name="common_back">Terug</string>
+    <string name="common_previous">Vorige</string>
+    <string name="common_next">Volgende</string>
+    <string name="common_mute">Geluid uit</string>
+    <string name="common_unmute">Geluid aan</string>
+    <string name="common_save">Opslaan</string>
+    <string name="common_cancel">Annuleren</string>
+    <string name="common_clear">Wissen</string>
+    <string name="common_done">Klaar</string>
+    <string name="common_not_set">Niet ingesteld</string>
+
+    <!-- Albums screen -->
+    <string name="albums_title">Kies een album</string>
+    <string name="albums_settings">Instellingen</string>
+    <string name="albums_load_failed">Kon albums niet laden</string>
+    <string name="albums_load_failed_hint">Tik op het tandwiel om de verbinding te herstellen.</string>
+    <string name="albums_empty">Geen albums gevonden op deze server.</string>
+    <plurals name="albums_item_count">
+        <item quantity="one">%1$d foto</item>
+        <item quantity="other">%1$d foto\'s</item>
+    </plurals>
+
+    <!-- Slideshow screen -->
+    <string name="slideshow_failed_to_load">Album kon niet worden geladen</string>
+    <string name="slideshow_empty">Dit album bevat geen foto\'s of video\'s.</string>
+    <string name="slideshow_swipe_up_hint">Veeg omhoog om een ander album te kiezen</string>
+
+    <!-- Settings — top-level -->
+    <string name="settings_title">Instellingen</string>
+    <string name="settings_section_connection">Verbinding</string>
+    <string name="settings_section_display">Weergave</string>
+    <string name="settings_section_weather">Weer</string>
+    <string name="settings_section_storage">Opslag</string>
+    <string name="settings_section_sleep">Slaapschema</string>
+    <string name="settings_section_device">Apparaat</string>
+
+    <!-- Settings — connection -->
+    <string name="settings_server_url">Server-URL</string>
+    <string name="settings_server_url_placeholder">https://fotos.voorbeeld.nl</string>
+    <string name="settings_api_key">API-sleutel</string>
+
+    <!-- Settings — storage -->
+    <string name="settings_clear_cache_title">Albumcache wissen</string>
+    <string name="settings_clear_cache_summary">Forceert een verse download van de albumlijst en thumbnails</string>
+    <string name="settings_clear_cache_dialog_title">Albumcache wissen?</string>
+    <string name="settings_clear_cache_dialog_text">De albumlijst en thumbnails worden bij de volgende keer openen opnieuw gedownload.</string>
+
+    <!-- Settings — device -->
+    <string name="settings_open_android_title">Android-instellingen openen</string>
+    <string name="settings_open_android_summary">Wifi, scherm, geluid en andere systeemopties</string>
+
+    <!-- Settings — display -->
+    <string name="settings_blur_title">Wazige achtergrondvulling</string>
+    <string name="settings_blur_summary_on">Foto vult het scherm, randen opgevuld met een wazige kopie</string>
+    <string name="settings_blur_summary_off">Foto in oorspronkelijke verhouding met zwarte balken aan de zijkanten</string>
+    <string name="settings_crop_title">Landschap bijsnijden om te passen</string>
+    <string name="settings_crop_summary_on">Landschapsfoto\'s vullen het scherm, gelijkmatig bijgesneden boven en onder</string>
+    <string name="settings_crop_summary_off">Landschapsfoto\'s op volledige hoogte met balken aan de zijkanten</string>
+
+    <!-- Settings — sleep schedule -->
+    <string name="settings_sleep_enable_title">Slaapschema inschakelen</string>
+    <string name="settings_sleep_enable_summary_on">Scherm gaat elke dag aan en uit op onderstaande tijden</string>
+    <string name="settings_sleep_enable_summary_off">Scherm blijft altijd aan</string>
+    <string name="settings_sleep_at">Slapen om</string>
+    <string name="settings_wake_at">Wakker om</string>
+
+    <!-- Settings — weather -->
+    <string name="settings_weather_location">Weerlocatie</string>
+    <string name="settings_weather_search_placeholder">Begin met typen van een stad…</string>
+    <string name="settings_weather_searching">Zoeken…</string>
+    <string name="settings_weather_no_matches">Geen resultaten.</string>
+    <string name="settings_weather_currently">Huidig: %1$s</string>
+</resources>
