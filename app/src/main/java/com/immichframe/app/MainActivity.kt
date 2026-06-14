@@ -138,6 +138,19 @@ private fun AppRoot() {
             window?.let { applyScreenState(it, false) }
         }
     }
+    // Only touch the backlight when actually transitioning into/out of
+    // sleep. On a cold launch into "awake" state we leave the panel alone.
+    var previousAsleep by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(asleep) {
+        val wasAsleep = previousAsleep
+        previousAsleep = asleep
+        when {
+            asleep -> Backlight.off()
+            wasAsleep == true -> Backlight.restore()
+        }
+    }
+    // Recover from a crash that left the backlight at zero.
+    LaunchedEffect(Unit) { Backlight.ensureOnAtBoot() }
 
     if (asleep) {
         Box(
