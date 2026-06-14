@@ -3,6 +3,7 @@ package com.immichframe.app.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -66,6 +67,7 @@ fun SlideshowScreen(
 ) {
     val blurredBackground = uiSettings.blurredBackground
     val cropLandscape = uiSettings.cropLandscape
+    val kenBurnsEffect = uiSettings.kenBurnsEffect
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var assets by remember { mutableStateOf<List<AssetDto>?>(null) }
@@ -184,6 +186,7 @@ fun SlideshowScreen(
                 onSwipeUp = onExit,
                 blurredBackground = blurredBackground,
                 cropLandscape = cropLandscape,
+                kenBurnsEffect = kenBurnsEffect,
             )
         }
 
@@ -344,6 +347,7 @@ private fun SlideshowContent(
     onSwipeUp: () -> Unit,
     blurredBackground: Boolean,
     cropLandscape: Boolean,
+    kenBurnsEffect: Boolean,
 ) {
     val n = assets.size
     val currentAsset = assets[((pagerState.currentPage - pagerStartPage) % n + n) % n]
@@ -375,6 +379,7 @@ private fun SlideshowContent(
             onSwipeUp = onSwipeUp,
             blurredBackground = blurredBackground,
             cropLandscape = cropLandscape,
+            kenBurnsEffect = kenBurnsEffect,
         )
     }
 
@@ -403,10 +408,31 @@ private fun SlideshowPage(
     onSwipeUp: () -> Unit,
     blurredBackground: Boolean,
     cropLandscape: Boolean,
+    kenBurnsEffect: Boolean,
 ) {
     val context = LocalContext.current
     when (asset.assetType()) {
         AssetType.IMAGE -> {
+            val kenBurnsActive = kenBurnsEffect && isCurrent && imageScale <= 1f
+            val kenBurnsProgress = remember(asset.id) { Animatable(0f) }
+            val kenBurnsDir = remember(asset.id) {
+                val r = kotlin.random.Random(asset.id.hashCode())
+                val angle = r.nextFloat() * (2f * Math.PI.toFloat())
+                Pair(kotlin.math.cos(angle), kotlin.math.sin(angle))
+            }
+            LaunchedEffect(asset.id, kenBurnsActive) {
+                if (kenBurnsActive) {
+                    kenBurnsProgress.animateTo(
+                        targetValue = 1f,
+                        animationSpec = tween(
+                            durationMillis = SLIDE_INTERVAL_MS.toInt(),
+                            easing = LinearEasing,
+                        ),
+                    )
+                } else {
+                    kenBurnsProgress.snapTo(0f)
+                }
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -471,10 +497,22 @@ private fun SlideshowPage(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            scaleX = imageScale
-                            scaleY = imageScale
-                            translationX = imageOffsetX
-                            translationY = imageOffsetY
+                            if (imageScale > 1f) {
+                                scaleX = imageScale
+                                scaleY = imageScale
+                                translationX = imageOffsetX
+                                translationY = imageOffsetY
+                            } else if (kenBurnsEffect) {
+                                val t = kenBurnsProgress.value
+                                val s = 1f + 0.15f * t
+                                scaleX = s
+                                scaleY = s
+                                // Pan within the safe area gained from the scale-up so no edge is exposed.
+                                val maxPanX = size.width * (s - 1f) * 0.5f
+                                val maxPanY = size.height * (s - 1f) * 0.5f
+                                translationX = kenBurnsDir.first * maxPanX * t
+                                translationY = kenBurnsDir.second * maxPanY * t
+                            }
                         },
                     loading = { SpinnerOverlay() },
                     error = { SpinnerOverlay() },

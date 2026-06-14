@@ -20,6 +20,7 @@ data class ImmichSettings(
     val sleepOnTime: String = "08:00",
     val blurredBackground: Boolean = true,
     val cropLandscape: Boolean = false,
+    val kenBurnsEffect: Boolean = true,
     val weatherCityName: String = "Gouda, Zuid-Holland, Netherlands",
     val weatherLatitude: Double = 52.0115,
     val weatherLongitude: Double = 4.7105,
@@ -35,6 +36,7 @@ class SettingsRepository(private val context: Context) {
     private val keySleepOnTime = stringPreferencesKey("sleep_on_time")
     private val keyBlurredBackground = booleanPreferencesKey("blurred_background")
     private val keyCropLandscape = booleanPreferencesKey("crop_landscape")
+    private val keyKenBurnsEffect = booleanPreferencesKey("ken_burns_effect")
     private val keyWeatherCityName = stringPreferencesKey("weather_city_name")
     private val keyWeatherLatitude = doublePreferencesKey("weather_latitude")
     private val keyWeatherLongitude = doublePreferencesKey("weather_longitude")
@@ -49,6 +51,7 @@ class SettingsRepository(private val context: Context) {
             sleepOnTime = prefs[keySleepOnTime] ?: "08:00",
             blurredBackground = prefs[keyBlurredBackground] ?: true,
             cropLandscape = prefs[keyCropLandscape] ?: false,
+            kenBurnsEffect = prefs[keyKenBurnsEffect] ?: true,
             weatherCityName = prefs[keyWeatherCityName] ?: "Gouda, Zuid-Holland, Netherlands",
             weatherLatitude = prefs[keyWeatherLatitude] ?: 52.0115,
             weatherLongitude = prefs[keyWeatherLongitude] ?: 4.7105,
@@ -101,6 +104,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun setCropLandscape(enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[keyCropLandscape] = enabled
+        }
+    }
+
+    suspend fun setKenBurnsEffect(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[keyKenBurnsEffect] = enabled
         }
     }
 

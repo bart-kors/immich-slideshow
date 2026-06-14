@@ -4,6 +4,7 @@ package com.immichframe.app
 data class SlideshowUiSettings(
     val blurredBackground: Boolean,
     val cropLandscape: Boolean,
+    val kenBurnsEffect: Boolean,
     val weatherLatitude: Double,
     val weatherLongitude: Double,
 )
@@ -11,6 +12,7 @@ data class SlideshowUiSettings(
 fun ImmichSettings.toSlideshowUiSettings(): SlideshowUiSettings = SlideshowUiSettings(
     blurredBackground = blurredBackground,
     cropLandscape = cropLandscape,
+    kenBurnsEffect = kenBurnsEffect,
     weatherLatitude = weatherLatitude,
     weatherLongitude = weatherLongitude,
 )

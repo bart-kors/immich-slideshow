@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.BlurOn
@@ -124,6 +125,7 @@ fun SettingsScreen(
     val sleepOnTime = stored?.sleepOnTime ?: "08:00"
     val blurredBackground = stored?.blurredBackground ?: true
     val cropLandscape = stored?.cropLandscape ?: false
+    val kenBurnsEffect = stored?.kenBurnsEffect ?: true
     val weatherCity = stored?.weatherCityName.orEmpty()
     var showCityPicker by remember { mutableStateOf(false) }
 
@@ -203,6 +205,13 @@ fun SettingsScreen(
                 CropLandscapeRow(
                     enabled = cropLandscape,
                     onToggle = { scope.launch { settingsRepository.setCropLandscape(it) } },
+                )
+                HorizontalDivider(color = Color(0xFF1F232C))
+            }
+            item {
+                KenBurnsRow(
+                    enabled = kenBurnsEffect,
+                    onToggle = { scope.launch { settingsRepository.setKenBurnsEffect(it) } },
                 )
             }
             item {
@@ -521,6 +530,35 @@ private fun CropLandscapeRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
 }
 
 @Composable
+private fun KenBurnsRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
+    ListItem(
+        leadingContent = {
+            Icon(
+                imageVector = Icons.Filled.Animation,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
+        headlineContent = { Text(stringResource(R.string.settings_kenburns_title)) },
+        supportingContent = {
+            Text(
+                text = if (enabled)
+                    stringResource(R.string.settings_kenburns_summary_on)
+                else stringResource(R.string.settings_kenburns_summary_off),
+                color = Color(0xFFB5BAC5),
+            )
+        },
+        trailingContent = {
+            Switch(checked = enabled, onCheckedChange = onToggle)
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle(!enabled) },
+    )
+}
+
+@Composable
 private fun BlurredBackgroundRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
     ListItem(
         leadingContent = {
@@ -718,7 +756,7 @@ private fun EditDialog(
             TextButton(
                 enabled = value.isNotBlank(),
                 onClick = { onConfirm(value) },
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }

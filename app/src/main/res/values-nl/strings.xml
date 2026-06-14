@@ -61,6 +61,9 @@
     <string name="settings_crop_title">Landschap bijsnijden om te passen</string>
     <string name="settings_crop_summary_on">Landschapsfoto\'s vullen het scherm, gelijkmatig bijgesneden boven en onder</string>
     <string name="settings_crop_summary_off">Landschapsfoto\'s op volledige hoogte met balken aan de zijkanten</string>
+    <string name="settings_kenburns_title">Ken Burns-effect</string>
+    <string name="settings_kenburns_summary_on">Foto\'s zoomen en bewegen langzaam tijdens het tonen</string>
+    <string name="settings_kenburns_summary_off">Foto\'s blijven stilstaan</string>
 
     <!-- Settings — sleep schedule -->
     <string name="settings_sleep_enable_title">Slaapschema inschakelen</string>

@@ -61,6 +61,9 @@
     <string name="settings_crop_title">Crop landscape to fit</string>
     <string name="settings_crop_summary_on">Landscape photos fill the screen, trimmed equally from top and bottom</string>
     <string name="settings_crop_summary_off">Landscape photos shown at full height with bars on the sides</string>
+    <string name="settings_kenburns_title">Ken Burns effect</string>
+    <string name="settings_kenburns_summary_on">Photos slowly zoom and pan while shown</string>
+    <string name="settings_kenburns_summary_off">Photos stay still</string>
 
     <!-- Settings — sleep schedule -->
     <string name="settings_sleep_enable_title">Enable sleep schedule</string>
