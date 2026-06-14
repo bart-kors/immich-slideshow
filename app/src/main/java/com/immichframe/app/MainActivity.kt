@@ -77,7 +77,9 @@ class MainActivity : ComponentActivity() {
 
 private fun applyScreenState(window: Window, asleep: Boolean) {
     val attrs = window.attributes
-    attrs.screenBrightness = if (asleep) 0f else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+    // Leave window-level brightness on AUTO; Backlight.off()/restore() writes
+    // the panel directly via su to bypass the vendor's ~12% minimum clamp.
+    attrs.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
     window.attributes = attrs
     if (asleep) {
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

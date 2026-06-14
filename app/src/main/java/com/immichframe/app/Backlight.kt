@@ -3,7 +3,6 @@ package com.immichframe.app
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.concurrent.TimeUnit
 
 /**
  * Drives the panel backlight directly via the Rockchip sysfs node so the
@@ -42,17 +41,38 @@ object Backlight {
         File(NODE).readText().trim().toIntOrNull()
     }.getOrNull()
 
-    private fun runSu(cmd: String): Boolean = runCatching {
-        val proc = ProcessBuilder("su", "-c", cmd)
-            .redirectErrorStream(true)
-            .start()
-        // If su isn't available or the supervisor is waiting on a grant
-        // prompt, don't hang forever — bail after 2 s.
-        if (proc.waitFor(2, TimeUnit.SECONDS)) {
-            proc.exitValue() == 0
-        } else {
-            proc.destroyForcibly()
-            false
+    private val suCandidates = listOf(
+        "/system/xbin/su",
+        "/system/bin/su",
+        "/sbin/su",
+        "su",
+    )
+
+    private fun runSu(cmd: String): Boolean {
+        for (path in suCandidates) {
+            val outcome = runCatching {
+                val proc = ProcessBuilder(path, "-c", cmd)
+                    .redirectErrorStream(true)
+                    .start()
+                // API 23 has no waitFor(timeout). Poll exitValue() instead.
+                val deadline = System.nanoTime() + 2_000_000_000L
+                var exit: Int? = null
+                while (System.nanoTime() < deadline) {
+                    try { exit = proc.exitValue(); break } catch (_: IllegalThreadStateException) {
+                        Thread.sleep(50)
+                    }
+                }
+                if (exit == null) {
+                    proc.destroy()
+                    "TIMEOUT"
+                } else {
+                    val out = proc.inputStream.bufferedReader().readText().trim()
+                    if (exit == 0) "OK" else "exit=$exit out=$out"
+                }
+            }.getOrElse { e -> "throw=${e::class.simpleName}:${e.message}" }
+            android.util.Log.i("Backlight", "$path → $outcome for: $cmd")
+            if (outcome == "OK") return true
         }
-    }.getOrElse { false }
+        return false
+    }
 }
