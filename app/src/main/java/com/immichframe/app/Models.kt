@@ -16,6 +16,30 @@ data class AlbumDto(
     val assets: List<AssetDto> = emptyList(),
 )
 
+/**
+ * Request body for `POST /api/search/metadata`. As of Immich 3.0 the album-info
+ * response no longer embeds its assets, so an album's assets are fetched here by
+ * filtering on [albumIds]. Results are paginated ([size] max 1000).
+ */
+@Serializable
+data class MetadataSearchDto(
+    val albumIds: List<String>,
+    val size: Int = 1000,
+    val page: Int = 1,
+    val withExif: Boolean = true,
+)
+
+@Serializable
+data class SearchResponseDto(
+    val assets: SearchAssetsDto,
+)
+
+@Serializable
+data class SearchAssetsDto(
+    val items: List<AssetDto> = emptyList(),
+    val nextPage: String? = null,
+)
+
 @Serializable
 data class AssetDto(
     val id: String,

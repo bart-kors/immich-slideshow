@@ -64,8 +64,20 @@ class ImmichRepository(
         apiKey: String,
         albumId: String,
     ): AlbumAssets {
-        val album = client.api(serverUrl, apiKey).getAlbum(albumId)
-        val supported = album.assets.filter { it.assetType() != AssetType.OTHER }
+        val api = client.api(serverUrl, apiKey)
+        val album = api.getAlbum(albumId)
+
+        // Immich 3.0 dropped the embedded assets array from the album-info
+        // response, so page through the search endpoint to collect them.
+        val assets = mutableListOf<AssetDto>()
+        var page = 1
+        while (true) {
+            val resp = api.searchAlbumAssets(MetadataSearchDto(albumIds = listOf(albumId), page = page))
+            assets += resp.assets.items
+            page = resp.assets.nextPage?.toIntOrNull() ?: break
+        }
+
+        val supported = assets.filter { it.assetType() != AssetType.OTHER }
         return AlbumAssets(
             albumName = album.albumName,
             assets = supported.shuffled(),
