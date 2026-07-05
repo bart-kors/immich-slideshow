@@ -18,7 +18,8 @@ class ImmichRepository(
     fun observeAlbums(): Flow<List<AlbumEntity>> = dao.observeAlbums()
 
     suspend fun refreshAlbums(serverUrl: String, apiKey: String) {
-        val remote = client.api(serverUrl, apiKey).getAlbums()
+        val api = client.api(serverUrl, apiKey)
+        val remote = api.getAlbums()
         val existing = dao.getAlbumsOnce().associateBy { it.id }
         val now = System.currentTimeMillis()
 
@@ -33,6 +34,11 @@ class ImmichRepository(
                             prev.thumbnail
                         else -> client.fetchThumbnailBytes(serverUrl, apiKey, newThumbId)
                     }
+                    // Sort strictly by the album's newest photo date. The album
+                    // list endpoint sometimes omits endDate, so fall back to the
+                    // single-album endpoint — never to the album's creation date.
+                    val newestPhotoDate = dto.endDate
+                        ?: runCatching { api.getAlbum(dto.id).endDate }.getOrNull()
                     AlbumEntity(
                         id = dto.id,
                         albumName = dto.albumName,
@@ -40,7 +46,7 @@ class ImmichRepository(
                         assetCount = dto.assetCount,
                         thumbnailAssetId = newThumbId,
                         thumbnail = bytes,
-                        sortDate = dto.endDate ?: dto.createdAt,
+                        sortDate = newestPhotoDate,
                         updatedAt = now,
                     )
                 }
