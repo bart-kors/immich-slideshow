@@ -25,3 +25,8 @@ Thumbs.db
 
 # Claude Code agent state
 .claude/
+.aider*
+
+# Code-index tool state
+.codegraph/
+.tokensave/

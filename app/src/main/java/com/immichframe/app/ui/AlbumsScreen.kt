@@ -47,7 +47,7 @@ import com.immichframe.app.R
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.immichframe.app.ImmichClient
+import com.immichframe.app.ImageLoaderProvider
 import com.immichframe.app.ImmichRepository
 import com.immichframe.app.SettingsRepository
 import com.immichframe.app.db.AlbumEntity
@@ -62,19 +62,13 @@ fun AlbumsScreen(
     onAlbumPicked: (String) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val immichClient: ImmichClient = org.koin.compose.koinInject()
     val scope = rememberCoroutineScope()
     val albums by immichRepository.observeAlbums().collectAsState(initial = emptyList())
     var refreshing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    val imageLoader = remember(apiKey) {
-        ImageLoader.Builder(context)
-            .okHttpClient(immichClient.okHttp(apiKey))
-            .crossfade(true)
-            .build()
-    }
+    val imageLoaderProvider: ImageLoaderProvider = org.koin.compose.koinInject()
+    val imageLoader = remember(apiKey) { imageLoaderProvider.get(apiKey) }
 
     LaunchedEffect(serverUrl, apiKey) {
         error = null

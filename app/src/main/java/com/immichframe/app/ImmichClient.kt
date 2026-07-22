@@ -13,33 +13,61 @@ import java.util.concurrent.TimeUnit
 /**
  * Thin wrapper over OkHttp + Retrofit for talking to an Immich server.
  *
- * The methods are stateless — the class only exists so Koin can hand out a
- * shared instance and tests can swap a fake via the same module.
+ * OkHttpClients are heavyweight (each owns a dispatcher thread pool and a
+ * connection pool), so a single base client is built lazily and every keyed
+ * variant is derived from it via newBuilder(), which shares both pools. The
+ * app only ever talks to one server with one key at a time, so the derived
+ * client and the Retrofit API are single-entry caches keyed on the current
+ * credentials — a settings edit swaps them, everything else reuses.
  */
 class ImmichClient {
 
-    fun okHttp(apiKey: String): OkHttpClient =
+    private val baseClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
-            .addInterceptor { chain ->
-                val req = chain.request().newBuilder()
-                    .header("x-api-key", apiKey)
-                    .header("Accept", "application/json")
-                    .build()
-                chain.proceed(req)
-            }
             .build()
+    }
 
-    fun retrofit(baseUrl: String, apiKey: String): Retrofit =
-        Retrofit.Builder()
-            .baseUrl(normalizeBaseUrl(baseUrl))
-            .client(okHttp(apiKey))
-            .addConverterFactory(jsonForRetrofit.asConverterFactory("application/json".toMediaType()))
-            .build()
+    @Volatile
+    private var cachedOkHttp: Pair<String, OkHttpClient>? = null
 
-    fun api(baseUrl: String, apiKey: String): ImmichApi =
-        retrofit(baseUrl, apiKey).create(ImmichApi::class.java)
+    @Volatile
+    private var cachedApi: Triple<String, String, ImmichApi>? = null
+
+    fun okHttp(apiKey: String): OkHttpClient {
+        cachedOkHttp?.let { (key, client) -> if (key == apiKey) return client }
+        synchronized(this) {
+            cachedOkHttp?.let { (key, client) -> if (key == apiKey) return client }
+            val client = baseClient.newBuilder()
+                .addInterceptor { chain ->
+                    val req = chain.request().newBuilder()
+                        .header("x-api-key", apiKey)
+                        .header("Accept", "application/json")
+                        .build()
+                    chain.proceed(req)
+                }
+                .build()
+            cachedOkHttp = apiKey to client
+            return client
+        }
+    }
+
+    fun api(baseUrl: String, apiKey: String): ImmichApi {
+        val normalized = normalizeBaseUrl(baseUrl)
+        cachedApi?.let { (url, key, api) -> if (url == normalized && key == apiKey) return api }
+        synchronized(this) {
+            cachedApi?.let { (url, key, api) -> if (url == normalized && key == apiKey) return api }
+            val api = Retrofit.Builder()
+                .baseUrl(normalized)
+                .client(okHttp(apiKey))
+                .addConverterFactory(jsonForRetrofit.asConverterFactory("application/json".toMediaType()))
+                .build()
+                .create(ImmichApi::class.java)
+            cachedApi = Triple(normalized, apiKey, api)
+            return api
+        }
+    }
 
     suspend fun fetchThumbnailBytes(
         baseUrl: String,

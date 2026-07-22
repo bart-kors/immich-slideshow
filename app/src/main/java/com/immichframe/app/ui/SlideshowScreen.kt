@@ -38,6 +38,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.*
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.CacheWriter
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
@@ -48,14 +51,22 @@ import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import coil.request.ImageRequest
 import com.immichframe.app.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
+
+// How much of the next video to warm into the disk cache ahead of playback.
+// Enough to cover MediaCodec init + the first seconds so the slide starts from
+// disk instead of a cold network fetch, without prefetching whole large files.
+private const val VIDEO_PREFETCH_BYTES = 16L * 1024 * 1024 // 16 MB
 
 private val SLIDE_INTERVAL_MS = SlideshowDefaults.SLIDE_INTERVAL_MS
 private val CONTROLS_TIMEOUT_MS = SlideshowDefaults.CONTROLS_TIMEOUT_MS
 private val HINT_TIMEOUT_MS = SlideshowDefaults.HINT_TIMEOUT_MS
 private val PAGER_VIRTUAL_COUNT = SlideshowDefaults.PAGER_VIRTUAL_COUNT
 
+@OptIn(UnstableApi::class)
 @Composable
 fun SlideshowScreen(
     albumId: String,
@@ -96,12 +107,8 @@ fun SlideshowScreen(
 
     val immichClient: ImmichClient = org.koin.compose.koinInject()
     val okHttp = remember(immichClient, apiKey) { immichClient.okHttp(apiKey) }
-    val imageLoader = remember(apiKey) {
-        ImageLoader.Builder(context)
-            .okHttpClient(okHttp)
-            .crossfade(true)
-            .build()
-    }
+    val imageLoaderProvider: ImageLoaderProvider = org.koin.compose.koinInject()
+    val imageLoader = remember(apiKey) { imageLoaderProvider.get(apiKey) }
 
     LaunchedEffect(albumId, serverUrl, apiKey) {
         assets = null
@@ -137,6 +144,32 @@ fun SlideshowScreen(
 
     val currentAsset = assets?.getOrNull(currentIndex)
     val nextAsset = assets?.getOrNull(nextIndex)
+
+    // Prefetch the head of the next video into the shared disk cache while the
+    // current slide shows, so video playback starts from disk instead of a cold
+    // network fetch — the main lever against the startup buffering spinner.
+    val nextVideoUrl = nextAsset
+        ?.takeIf { it.assetType() == AssetType.VIDEO }
+        ?.let { ImmichClient.videoPlaybackUrl(serverUrl, it.id) }
+    LaunchedEffect(nextVideoUrl) {
+        val url = nextVideoUrl ?: return@LaunchedEffect
+        // runInterruptible so cancelling the effect (slide changed) aborts the
+        // in-flight download instead of wasting the frame's bandwidth.
+        runCatching {
+            runInterruptible(Dispatchers.IO) {
+                val source = CacheDataSource.Factory()
+                    .setCache(VideoCache.get(context))
+                    .setUpstreamDataSourceFactory(OkHttpDataSource.Factory(okHttp))
+                    .createDataSource()
+                CacheWriter(
+                    source,
+                    DataSpec.Builder().setUri(url).setLength(VIDEO_PREFETCH_BYTES).build(),
+                    null,
+                    null,
+                ).cache()
+            }
+        }
+    }
 
     // 30 s auto-advance timer (images only, paused while zoomed)
     LaunchedEffect(pagerState.currentPage, imageScale > 1f, currentAsset?.id) {
@@ -565,6 +598,20 @@ private fun SlideshowPage(
     }
 }
 
+/**
+ * Owns the ExoPlayer created in [VideoPlayer]'s remember block. Compose can
+ * abandon a composition before applying it, in which case DisposableEffect
+ * never registers and a prepared player would leak its MediaCodec, threads,
+ * and buffers with no release path. RememberObserver guarantees release on
+ * every exit path — abandoned, forgotten, or replaced by a new url key.
+ */
+@androidx.annotation.OptIn(UnstableApi::class)
+private class PlayerHolder(val player: ExoPlayer) : RememberObserver {
+    override fun onRemembered() {}
+    override fun onForgotten() = player.release()
+    override fun onAbandoned() = player.release()
+}
+
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(UnstableApi::class)
 @Composable
@@ -579,39 +626,53 @@ private fun VideoPlayer(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val player = remember(url) {
-        val dataSourceFactory = OkHttpDataSource.Factory(okHttp)
+        // Cache-backed source: serves the prefetched head from disk and caches
+        // the rest, so album re-loops replay without re-buffering. Shares the
+        // one process-wide SimpleCache with the prefetch path.
+        val dataSourceFactory = CacheDataSource.Factory()
+            .setCache(VideoCache.get(context))
+            .setUpstreamDataSourceFactory(OkHttpDataSource.Factory(okHttp))
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
             .build()
+        // Larger min buffer rides out the frame's Wi-Fi jitter; the byte cap
+        // keeps buffered memory bounded on the 512 MB device even for the
+        // high-bitrate H.264 originals.
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs = */ 15_000,
-                /* maxBufferMs = */ 30_000,
+                /* minBufferMs = */ 30_000,
+                /* maxBufferMs = */ 60_000,
                 /* bufferForPlaybackMs = */ 2_000,
                 /* bufferForPlaybackAfterRebufferMs = */ 5_000,
             )
-            .setTargetBufferBytes(C.LENGTH_UNSET)
+            .setTargetBufferBytes(32 * 1024 * 1024)
             .build()
-        ExoPlayer.Builder(context)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
-            .setLoadControl(loadControl)
-            .build()
-            .apply {
-                setAudioAttributes(audioAttributes, true)
-                setMediaItem(MediaItem.fromUri(url))
-                volume = 0f
-                prepare()
-                playWhenReady = true
-            }
-    }
+        PlayerHolder(
+            ExoPlayer.Builder(context)
+                .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+                .setLoadControl(loadControl)
+                .build()
+                .apply {
+                    setAudioAttributes(audioAttributes, true)
+                    setMediaItem(MediaItem.fromUri(url))
+                    volume = 0f
+                    prepare()
+                    playWhenReady = true
+                },
+        )
+    }.player
 
     var buffering by remember(url) { mutableStateOf(true) }
     var hasStartedPlaying by remember(url) { mutableStateOf(false) }
     var advanceRequested by remember(url) { mutableStateOf(false) }
 
     LaunchedEffect(url) {
-        delay(20_000)
+        // Give a slow-starting video longer to buffer before giving up and
+        // skipping it — prefetch usually beats this, but a cold high-bitrate
+        // original on weak Wi-Fi can legitimately need more than 20 s.
+        delay(30_000)
         if (!hasStartedPlaying) advanceRequested = true
     }
 
@@ -647,7 +708,6 @@ private fun VideoPlayer(
         onDispose {
             player.removeListener(listener)
             lifecycleOwner.lifecycle.removeObserver(observer)
-            player.release()
         }
     }
 

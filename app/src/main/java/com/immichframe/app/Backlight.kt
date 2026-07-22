@@ -54,20 +54,25 @@ object Backlight {
                 val proc = ProcessBuilder(path, "-c", cmd)
                     .redirectErrorStream(true)
                     .start()
-                // API 23 has no waitFor(timeout). Poll exitValue() instead.
-                val deadline = System.nanoTime() + 2_000_000_000L
-                var exit: Int? = null
-                while (System.nanoTime() < deadline) {
-                    try { exit = proc.exitValue(); break } catch (_: IllegalThreadStateException) {
-                        Thread.sleep(50)
+                try {
+                    // API 23 has no waitFor(timeout). Poll exitValue() instead.
+                    val deadline = System.nanoTime() + 2_000_000_000L
+                    var exit: Int? = null
+                    while (System.nanoTime() < deadline) {
+                        try { exit = proc.exitValue(); break } catch (_: IllegalThreadStateException) {
+                            Thread.sleep(50)
+                        }
                     }
-                }
-                if (exit == null) {
+                    if (exit == null) {
+                        "TIMEOUT"
+                    } else {
+                        val out = proc.inputStream.bufferedReader().use { it.readText().trim() }
+                        if (exit == 0) "OK" else "exit=$exit out=$out"
+                    }
+                } finally {
+                    // destroy() closes the process's stdio fds on every path,
+                    // including timeout and thrown exceptions.
                     proc.destroy()
-                    "TIMEOUT"
-                } else {
-                    val out = proc.inputStream.bufferedReader().readText().trim()
-                    if (exit == 0) "OK" else "exit=$exit out=$out"
                 }
             }.getOrElse { e -> "throw=${e::class.simpleName}:${e.message}" }
             android.util.Log.i("Backlight", "$path → $outcome for: $cmd")
